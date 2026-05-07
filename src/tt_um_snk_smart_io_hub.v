@@ -48,7 +48,7 @@ module tt_um_snk_smart_io_hub (
         if (!rst_n) begin
             lut_idx <= 5'd0;
             for (i = 0; i < 32; i = i + 1) begin
-                lut[i] <= {i[4:0], 3'b000}; // 0, 8, 16, ... 248
+                lut[i] <= (i << 3) & 8'hFF; // 0, 8, 16, ... 248
             end
         end else begin
             lut_idx <= lut_idx + 1'b1;
@@ -86,7 +86,7 @@ module tt_um_snk_smart_io_hub (
             end else if (rx_valid && enable) begin
                 case (state)
                     IDLE: begin
-                        case (rx_data[7:4])
+                        casez (rx_data[7:4])
                             4'h8: begin
                                 idx   <= rx_data[4:0];
                                 state <= PWM_SET;
