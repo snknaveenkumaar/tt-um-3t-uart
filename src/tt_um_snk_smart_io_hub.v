@@ -11,9 +11,9 @@ module tt_um_snk_smart_io_hub (
     input  wire       rst_n
 );
 
-    wire rx      = ui_in[0];
-    wire enable  = ui_in[1];
-    wire clear   = ui_in[3];
+    wire rx     = ui_in[0];
+    wire enable = ui_in[1];
+    wire clear  = ui_in[3];
 
     wire [7:0] rx_data;
     wire       rx_valid;
@@ -26,31 +26,11 @@ module tt_um_snk_smart_io_hub (
         .valid(rx_valid)
     );
 
-    // registers
-    reg [127:0] duty_bus;
+    // 🔥 32 PWM channels
+    reg [255:0] duty_bus;
     reg [7:0]   prescale;
 
-    // timer signals (tie-safe)
-    reg [127:0] reload_bus;
-    reg [7:0]   enable_bus;
-    reg [7:0]   periodic_bus;
-    reg [7:0]   reload_strobe;
-
-    wire [7:0]  timeout;
-    wire [127:0] count_bus;
-
-    timer_bank u_timer (
-        .clk(clk),
-        .rst_n(rst_n),
-        .enable_bus(enable_bus),
-        .periodic_bus(periodic_bus),
-        .reload_strobe(reload_strobe),
-        .reload_bus(reload_bus),
-        .timeout_pulse(timeout),
-        .count_bus(count_bus)
-    );
-
-    wire [15:0] pwm_out;
+    wire [31:0] pwm_out;
 
     pwm_bank u_pwm (
         .clk(clk),
@@ -60,65 +40,98 @@ module tt_um_snk_smart_io_hub (
         .pwm_out(pwm_out)
     );
 
-    reg [2:0] state;
-    reg [3:0] pwm_idx;
+    // 🔥 LUT waveform generator
+    reg [7:0] lut [0:31];
+    reg [4:0] lut_idx;
 
-    localparam IDLE = 3'd0;
-    localparam PWM_SET = 3'd1;
-    localparam PRESCALE_SET = 3'd2;
+    integer i;
 
-    // 🔥 ONLY ONE EDGE → posedge clk
     always @(posedge clk) begin
-
         if (!rst_n) begin
-            duty_bus        <= 128'd0;
-            prescale        <= 8'd0;
-            state           <= IDLE;
-            pwm_idx         <= 4'd0;
+            lut_idx <= 0;
+            for (i = 0; i < 32; i = i + 1)
+                lut[i] <= i * 8;
+        end else begin
+            lut_idx <= lut_idx + 1;
+        end
+    end
 
-            reload_bus      <= 128'd0;
-            enable_bus      <= 8'd0;
-            periodic_bus    <= 8'd0;
-            reload_strobe   <= 8'd0;
+    // 🔥 Simple ALU
+    reg [7:0] alu_a, alu_b;
+    wire [7:0] alu_add = alu_a + alu_b;
+    wire [7:0] alu_mul = alu_a * alu_b;
 
+    // FSM
+    reg [2:0] state;
+    reg [4:0] idx;
+
+    localparam IDLE = 0;
+    localparam PWM_SET = 1;
+    localparam PRESCALE = 2;
+    localparam ALU_A = 3;
+    localparam ALU_B = 4;
+
+    always @(posedge clk) begin
+        if (!rst_n) begin
+            duty_bus <= 0;
+            prescale <= 0;
+            state <= IDLE;
+            alu_a <= 0;
+            alu_b <= 0;
         end else begin
 
-            reload_strobe <= 8'd0;
-
             if (clear) begin
-                duty_bus <= 128'd0;
-                prescale <= 8'd0;
-                state    <= IDLE;
-            end else begin
+                duty_bus <= 0;
+                prescale <= 0;
+                state <= IDLE;
+            end else if (rx_valid && enable) begin
 
-                if (rx_valid && enable) begin
-                    case (state)
+                case (state)
 
-                        IDLE: begin
-                            if (rx_data[7:4] == 4'h8) begin
-                                pwm_idx <= rx_data[3:0];
-                                state   <= PWM_SET;
-                            end else if (rx_data == 8'h90) begin
-                                state   <= PRESCALE_SET;
+                    IDLE: begin
+                        case (rx_data[7:4])
+                            4'h8: begin
+                                idx <= rx_data[4:0];
+                                state <= PWM_SET;
                             end
-                        end
 
-                        PWM_SET: begin
-                            duty_bus[pwm_idx*8 +: 8] <= rx_data;
-                            state <= IDLE;
-                        end
+                            4'h9: state <= PRESCALE;
 
-                        PRESCALE_SET: begin
-                            prescale <= rx_data;
-                            state <= IDLE;
-                        end
+                            4'hA: state <= ALU_A;
 
-                        default: state <= IDLE;
+                            4'hB: state <= ALU_B;
 
-                    endcase
-                end
+                        endcase
+                    end
 
+                    PWM_SET: begin
+                        duty_bus[idx*8 +: 8] <= rx_data;
+                        state <= IDLE;
+                    end
+
+                    PRESCALE: begin
+                        prescale <= rx_data;
+                        state <= IDLE;
+                    end
+
+                    ALU_A: begin
+                        alu_a <= rx_data;
+                        state <= IDLE;
+                    end
+
+                    ALU_B: begin
+                        alu_b <= rx_data;
+                        state <= IDLE;
+                    end
+
+                endcase
             end
+
+            // 🔥 Use LUT + ALU to drive some channels
+            duty_bus[0 +: 8]  <= lut[lut_idx];
+            duty_bus[8 +: 8]  <= alu_add;
+            duty_bus[16 +: 8] <= alu_mul;
+
         end
     end
 
@@ -126,8 +139,7 @@ module tt_um_snk_smart_io_hub (
     assign uio_out = pwm_out[15:8];
     assign uio_oe  = 8'hFF;
 
-    // silence warnings
-    wire _unused = &{ena, uio_in, ui_in[7:4], timeout, count_bus[0], 1'b0};
+    wire _unused = &{ena, uio_in, ui_in[7:2], pwm_out[31:16], 1'b0};
 
 endmodule
 
