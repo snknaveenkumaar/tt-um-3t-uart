@@ -1,34 +1,34 @@
 `default_nettype none
 
 module pwm_bank (
-    input  wire        clk,
-    input  wire        rst_n,
-    input  wire [7:0]  prescale_div,
-    input  wire [127:0] duty_bus,
-    output wire [15:0] pwm_out
+    input  wire clk,
+    input  wire rst_n,
+    input  wire [7:0] prescale_div,
+    input  wire [255:0] duty_bus,   // 32 channels
+    output wire [31:0] pwm_out
 );
 
-    reg [7:0] carrier;
+    reg [7:0] counter;
     reg [7:0] prescale_cnt;
 
-    always @(posedge clk or negedge rst_n) begin
+    always @(posedge clk) begin
         if (!rst_n) begin
-            carrier      <= 8'd0;
-            prescale_cnt <= 8'd0;
+            counter <= 0;
+            prescale_cnt <= 0;
         end else begin
             if (prescale_cnt == prescale_div) begin
-                prescale_cnt <= 8'd0;
-                carrier      <= carrier + 1'b1;
+                prescale_cnt <= 0;
+                counter <= counter + 1;
             end else begin
-                prescale_cnt <= prescale_cnt + 1'b1;
+                prescale_cnt <= prescale_cnt + 1;
             end
         end
     end
 
     genvar i;
     generate
-        for (i = 0; i < 16; i = i + 1) begin : GEN_PWM
-            assign pwm_out[i] = (carrier < duty_bus[i*8 +: 8]);
+        for (i = 0; i < 32; i = i + 1) begin
+            assign pwm_out[i] = (counter < duty_bus[i*8 +: 8]);
         end
     endgenerate
 
