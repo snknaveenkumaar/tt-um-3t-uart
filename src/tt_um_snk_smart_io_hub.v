@@ -11,12 +11,10 @@ module tt_um_snk_smart_io_hub (
     input  wire       rst_n
 );
 
-    // Inputs
     wire rx      = ui_in[0];
     wire enable  = ui_in[1];
     wire clear   = ui_in[3];
 
-    // UART
     wire [7:0] rx_data;
     wire       rx_valid;
 
@@ -28,11 +26,11 @@ module tt_um_snk_smart_io_hub (
         .valid(rx_valid)
     );
 
-    // PWM + control registers
+    // registers
     reg [127:0] duty_bus;
     reg [7:0]   prescale;
 
-    // Timer signals (kept but safely tied)
+    // timer signals (tie-safe)
     reg [127:0] reload_bus;
     reg [7:0]   enable_bus;
     reg [7:0]   periodic_bus;
@@ -62,23 +60,22 @@ module tt_um_snk_smart_io_hub (
         .pwm_out(pwm_out)
     );
 
-    // FSM
     reg [2:0] state;
     reg [3:0] pwm_idx;
 
-    localparam IDLE           = 3'd0;
-    localparam PWM_SET        = 3'd1;
-    localparam PRESCALE_SET   = 3'd2;
+    localparam IDLE = 3'd0;
+    localparam PWM_SET = 3'd1;
+    localparam PRESCALE_SET = 3'd2;
 
-    // ✅ FIXED ALWAYS BLOCK (NO MULTI-EDGE ISSUE)
-    always @(posedge clk or negedge rst_n) begin
+    // 🔥 ONLY ONE EDGE → posedge clk
+    always @(posedge clk) begin
+
         if (!rst_n) begin
             duty_bus        <= 128'd0;
             prescale        <= 8'd0;
             state           <= IDLE;
             pwm_idx         <= 4'd0;
 
-            // Fix undriven signals
             reload_bus      <= 128'd0;
             enable_bus      <= 8'd0;
             periodic_bus    <= 8'd0;
@@ -86,15 +83,13 @@ module tt_um_snk_smart_io_hub (
 
         end else begin
 
-            // synchronous clear
+            reload_strobe <= 8'd0;
+
             if (clear) begin
                 duty_bus <= 128'd0;
                 prescale <= 8'd0;
                 state    <= IDLE;
             end else begin
-
-                // default: no reload pulses
-                reload_strobe <= 8'd0;
 
                 if (rx_valid && enable) begin
                     case (state)
@@ -118,9 +113,7 @@ module tt_um_snk_smart_io_hub (
                             state <= IDLE;
                         end
 
-                        default: begin
-                            state <= IDLE;
-                        end
+                        default: state <= IDLE;
 
                     endcase
                 end
@@ -129,12 +122,11 @@ module tt_um_snk_smart_io_hub (
         end
     end
 
-    // Outputs
     assign uo_out  = pwm_out[7:0];
     assign uio_out = pwm_out[15:8];
     assign uio_oe  = 8'hFF;
 
-    // Prevent unused warnings
+    // silence warnings
     wire _unused = &{ena, uio_in, ui_in[7:4], timeout, count_bus[0], 1'b0};
 
 endmodule
