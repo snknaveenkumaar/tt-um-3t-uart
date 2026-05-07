@@ -3,7 +3,7 @@ yaml_version: 6
 project:
   title: "UART Smart I/O Hub"
   author: "NAVEEN KUMAAR S"
-  description: "UART-controlled 64-channel PWM hub with banked outputs, internal modulation engine, ALU datapath, and sequencer."
+  description: "IEEE SNK_UART-controlled 64-channel PWM hub with banked outputs, internal modulation engine, ALU datapath, and sequencer."
 
   language: "Verilog"
   clock_hz: 50000000
