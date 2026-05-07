@@ -11,12 +11,12 @@ module tt_um_snk_smart_io_hub (
     input  wire       rst_n
 );
 
-    wire rx         = ui_in[0];
-    wire cmd_enable = ui_in[1];
-    wire seq_enable = ui_in[2];
-    wire clear      = ui_in[3];
+    wire rx           = ui_in[0];
+    wire cmd_enable   = ui_in[1];
+    wire seq_enable   = ui_in[2];
+    wire clear        = ui_in[3];
     wire [2:0] bank_sel = ui_in[6:4];
-    wire debug_page = ui_in[7];
+    wire debug_page   = ui_in[7];
 
     wire [7:0] rx_data;
     wire       rx_valid;
@@ -29,9 +29,9 @@ module tt_um_snk_smart_io_hub (
         .valid(rx_valid)
     );
 
-    reg  [383:0] duty_bus;
+    reg  [255:0] duty_bus;
     reg  [7:0]   prescale;
-    wire [47:0]  pwm_out;
+    wire [31:0]  pwm_out;
 
     pwm_bank u_pwm (
         .clk(clk),
@@ -47,11 +47,11 @@ module tt_um_snk_smart_io_hub (
     reg [7:0]  alu_a;
     reg [7:0]  alu_b;
 
-    wire [7:0]  alu_add = alu_a + alu_b;
-    wire [15:0] alu_mul_full = alu_a * alu_b;
+    wire [7:0] alu_add = alu_a + alu_b;
+    wire [7:0] alu_mul_lo = (alu_a * alu_b)[7:0];
 
     reg [2:0] state;
-    reg [5:0] idx;
+    reg [4:0] idx;
 
     localparam ST_IDLE      = 3'd0;
     localparam ST_SET_PWM   = 3'd1;
@@ -61,49 +61,66 @@ module tt_um_snk_smart_io_hub (
     localparam ST_SET_PHASE = 3'd5;
     localparam ST_SET_LFSR  = 3'd6;
 
-    wire [8:0] pwm_base = {idx, 3'b000};
-
     function [7:0] select_bank8;
-        input [47:0] bus;
-        input [2:0] sel;
+        input [31:0] bus;
+        input [1:0] sel;
         begin
             case (sel)
-                3'd0: select_bank8 = bus[7:0];
-                3'd1: select_bank8 = bus[15:8];
-                3'd2: select_bank8 = bus[23:16];
-                3'd3: select_bank8 = bus[31:24];
-                3'd4: select_bank8 = bus[39:32];
-                3'd5: select_bank8 = bus[47:40];
+                2'd0: select_bank8 = bus[7:0];
+                2'd1: select_bank8 = bus[15:8];
+                2'd2: select_bank8 = bus[23:16];
+                2'd3: select_bank8 = bus[31:24];
                 default: select_bank8 = 8'd0;
             endcase
         end
     endfunction
 
-    function [2:0] next_bank;
-        input [2:0] sel;
+    function [7:0] lut_value;
+        input [4:0] n;
         begin
-            case (sel)
-                3'd0: next_bank = 3'd1;
-                3'd1: next_bank = 3'd2;
-                3'd2: next_bank = 3'd3;
-                3'd3: next_bank = 3'd4;
-                3'd4: next_bank = 3'd5;
-                3'd5: next_bank = 3'd0;
-                default: next_bank = 3'd0;
+            case (n)
+                5'd0:  lut_value = 8'd0;
+                5'd1:  lut_value = 8'd8;
+                5'd2:  lut_value = 8'd16;
+                5'd3:  lut_value = 8'd24;
+                5'd4:  lut_value = 8'd32;
+                5'd5:  lut_value = 8'd40;
+                5'd6:  lut_value = 8'd48;
+                5'd7:  lut_value = 8'd56;
+                5'd8:  lut_value = 8'd64;
+                5'd9:  lut_value = 8'd72;
+                5'd10: lut_value = 8'd80;
+                5'd11: lut_value = 8'd88;
+                5'd12: lut_value = 8'd96;
+                5'd13: lut_value = 8'd104;
+                5'd14: lut_value = 8'd112;
+                5'd15: lut_value = 8'd120;
+                5'd16: lut_value = 8'd128;
+                5'd17: lut_value = 8'd136;
+                5'd18: lut_value = 8'd144;
+                5'd19: lut_value = 8'd152;
+                5'd20: lut_value = 8'd160;
+                5'd21: lut_value = 8'd168;
+                5'd22: lut_value = 8'd176;
+                5'd23: lut_value = 8'd184;
+                5'd24: lut_value = 8'd192;
+                5'd25: lut_value = 8'd200;
+                5'd26: lut_value = 8'd208;
+                5'd27: lut_value = 8'd216;
+                5'd28: lut_value = 8'd224;
+                5'd29: lut_value = 8'd232;
+                5'd30: lut_value = 8'd240;
+                5'd31: lut_value = 8'd248;
+                default: lut_value = 8'd0;
             endcase
         end
     endfunction
 
-    wire [7:0] status_page = {
-        seq_enable,
-        debug_page,
-        bank_sel,
-        phase[2:0]
-    };
+    wire [7:0] status_page = {seq_enable, debug_page, bank_sel, phase[2:0]};
 
     always @(posedge clk) begin
         if (!rst_n) begin
-            duty_bus <= 384'd0;
+            duty_bus <= 256'd0;
             prescale <= 8'd0;
             phase    <= 8'd0;
             lfsr     <= 16'h1ACE;
@@ -111,10 +128,10 @@ module tt_um_snk_smart_io_hub (
             alu_a    <= 8'd0;
             alu_b    <= 8'd0;
             state    <= ST_IDLE;
-            idx      <= 6'd0;
+            idx      <= 5'd0;
         end else begin
             if (clear) begin
-                duty_bus <= 384'd0;
+                duty_bus <= 256'd0;
                 prescale <= 8'd0;
                 phase    <= 8'd0;
                 lfsr     <= 16'h1ACE;
@@ -122,17 +139,16 @@ module tt_um_snk_smart_io_hub (
                 alu_a    <= 8'd0;
                 alu_b    <= 8'd0;
                 state    <= ST_IDLE;
-                idx      <= 6'd0;
+                idx      <= 5'd0;
             end else begin
                 if (rx_valid && cmd_enable) begin
                     case (state)
                         ST_IDLE: begin
                             case (rx_data[7:6])
                                 2'b10: begin
-                                    idx   <= rx_data[5:0];
+                                    idx   <= rx_data[4:0];
                                     state <= ST_SET_PWM;
                                 end
-
                                 2'b11: begin
                                     case (rx_data[5:0])
                                         6'd0: state <= ST_SET_PRES;
@@ -143,7 +159,6 @@ module tt_um_snk_smart_io_hub (
                                         default: state <= ST_IDLE;
                                     endcase
                                 end
-
                                 default: begin
                                     state <= ST_IDLE;
                                 end
@@ -151,8 +166,8 @@ module tt_um_snk_smart_io_hub (
                         end
 
                         ST_SET_PWM: begin
-                            if (idx < 6'd40)
-                                duty_bus[pwm_base +: 8] <= rx_data;
+                            if (idx < 5'd32)
+                                duty_bus[idx*8 +: 8] <= rx_data;
                             state <= ST_IDLE;
                         end
 
@@ -193,20 +208,20 @@ module tt_um_snk_smart_io_hub (
                     pattern <= {pattern[6:0], pattern[7] ^ lfsr[0]};
                 end
 
-                duty_bus[40*8 +: 8] <= phase;
-                duty_bus[41*8 +: 8] <= lfsr[7:0];
-                duty_bus[42*8 +: 8] <= lfsr[15:8];
-                duty_bus[43*8 +: 8] <= pattern;
-                duty_bus[44*8 +: 8] <= alu_add;
-                duty_bus[45*8 +: 8] <= alu_mul_full[7:0];
-                duty_bus[46*8 +: 8] <= alu_mul_full[15:8];
-                duty_bus[47*8 +: 8] <= status_page;
+                duty_bus[24*8 +: 8] <= phase;
+                duty_bus[25*8 +: 8] <= lfsr[7:0];
+                duty_bus[26*8 +: 8] <= lfsr[15:8];
+                duty_bus[27*8 +: 8] <= pattern;
+                duty_bus[28*8 +: 8] <= alu_add;
+                duty_bus[29*8 +: 8] <= alu_mul_lo;
+                duty_bus[30*8 +: 8] <= status_page;
+                duty_bus[31*8 +: 8] <= lut_value(phase[4:0]);
             end
         end
     end
 
-    assign uo_out  = select_bank8(pwm_out, bank_sel);
-    assign uio_out = debug_page ? status_page : select_bank8(pwm_out, next_bank(bank_sel));
+    assign uo_out  = select_bank8(pwm_out, bank_sel[1:0]);
+    assign uio_out = debug_page ? status_page : select_bank8(pwm_out, bank_sel[1:0] + 2'd1);
     assign uio_oe  = 8'hFF;
 
     wire _unused = &{ena, uio_in, 1'b1};
