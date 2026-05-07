@@ -39,26 +39,64 @@ module tt_um_snk_smart_io_hub (
         .pwm_out(pwm_out)
     );
 
-    // LUT waveform generator
-    reg [7:0] lut [0:31];
+    // LUT index generator
     reg [4:0] lut_idx;
-    integer i;
 
     always @(posedge clk) begin
         if (!rst_n) begin
             lut_idx <= 5'd0;
-            for (i = 0; i < 32; i = i + 1) begin
-                lut[i] <= (i << 3) & 8'hFF; // 0, 8, 16, ... 248
-            end
         end else begin
             lut_idx <= lut_idx + 1'b1;
         end
     end
 
+    // Constant LUT function: 0, 8, 16, ... 248
+    function [7:0] lut_value;
+        input [4:0] idx;
+        begin
+            case (idx)
+                5'd0:  lut_value = 8'd0;
+                5'd1:  lut_value = 8'd8;
+                5'd2:  lut_value = 8'd16;
+                5'd3:  lut_value = 8'd24;
+                5'd4:  lut_value = 8'd32;
+                5'd5:  lut_value = 8'd40;
+                5'd6:  lut_value = 8'd48;
+                5'd7:  lut_value = 8'd56;
+                5'd8:  lut_value = 8'd64;
+                5'd9:  lut_value = 8'd72;
+                5'd10: lut_value = 8'd80;
+                5'd11: lut_value = 8'd88;
+                5'd12: lut_value = 8'd96;
+                5'd13: lut_value = 8'd104;
+                5'd14: lut_value = 8'd112;
+                5'd15: lut_value = 8'd120;
+                5'd16: lut_value = 8'd128;
+                5'd17: lut_value = 8'd136;
+                5'd18: lut_value = 8'd144;
+                5'd19: lut_value = 8'd152;
+                5'd20: lut_value = 8'd160;
+                5'd21: lut_value = 8'd168;
+                5'd22: lut_value = 8'd176;
+                5'd23: lut_value = 8'd184;
+                5'd24: lut_value = 8'd192;
+                5'd25: lut_value = 8'd200;
+                5'd26: lut_value = 8'd208;
+                5'd27: lut_value = 8'd216;
+                5'd28: lut_value = 8'd224;
+                5'd29: lut_value = 8'd232;
+                5'd30: lut_value = 8'd240;
+                5'd31: lut_value = 8'd248;
+                default: lut_value = 8'd0;
+            endcase
+        end
+    endfunction
+
     // Simple ALU
-    reg  [7:0] alu_a, alu_b;
-    wire [7:0] alu_add = alu_a + alu_b;
-    wire [7:0] alu_mul = alu_a * alu_b;
+    reg  [7:0]  alu_a, alu_b;
+    wire [7:0]  alu_add = alu_a + alu_b;
+    wire [15:0] alu_mul_full = alu_a * alu_b;
+    wire [7:0]  alu_mul = alu_mul_full[7:0];
 
     // State machine
     reg [2:0] state;
@@ -86,7 +124,7 @@ module tt_um_snk_smart_io_hub (
             end else if (rx_valid && enable) begin
                 case (state)
                     IDLE: begin
-                        casez (rx_data[7:4])
+                        case (rx_data[7:4])
                             4'h8: begin
                                 idx   <= rx_data[4:0];
                                 state <= PWM_SET;
@@ -132,10 +170,10 @@ module tt_um_snk_smart_io_hub (
                 endcase
             end
 
-            // Auto-driving a few channels to make the design richer
-            duty_bus[0 +: 8]  <= lut[lut_idx];
-            duty_bus[8 +: 8]  <= alu_add;
-            duty_bus[16 +: 8] <= alu_mul;
+            // Auto-drive a few high channels with internal logic
+            duty_bus[28*8 +: 8] <= lut_value(lut_idx);
+            duty_bus[29*8 +: 8] <= alu_add;
+            duty_bus[30*8 +: 8] <= alu_mul;
         end
     end
 
@@ -143,7 +181,7 @@ module tt_um_snk_smart_io_hub (
     assign uio_out = pwm_out[15:8];
     assign uio_oe  = 8'hFF;
 
-    // Keep all remaining inputs/outputs considered used
+    // Keep unused inputs and upper PWM bits accounted for
     wire _unused = &{
         ena,
         uio_in,
