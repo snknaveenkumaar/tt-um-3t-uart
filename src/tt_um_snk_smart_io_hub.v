@@ -26,7 +26,6 @@ module tt_um_snk_smart_io_hub (
         .valid(rx_valid)
     );
 
-    // 32-channel PWM bank
     reg  [255:0] duty_bus;
     reg  [7:0]   prescale;
     wire [31:0]  pwm_out;
@@ -39,7 +38,6 @@ module tt_um_snk_smart_io_hub (
         .pwm_out(pwm_out)
     );
 
-    // LUT index generator
     reg [4:0] lut_idx;
 
     always @(posedge clk) begin
@@ -50,7 +48,6 @@ module tt_um_snk_smart_io_hub (
         end
     end
 
-    // Constant LUT function: 0, 8, 16, ... 248
     function [7:0] lut_value;
         input [4:0] idx;
         begin
@@ -92,13 +89,11 @@ module tt_um_snk_smart_io_hub (
         end
     endfunction
 
-    // Simple ALU
-    reg  [7:0]  alu_a, alu_b;
-    wire [7:0]  alu_add = alu_a + alu_b;
+    reg  [7:0] alu_a, alu_b;
+    wire [7:0] alu_add = alu_a + alu_b;
     wire [15:0] alu_mul_full = alu_a * alu_b;
     wire [7:0]  alu_mul = alu_mul_full[7:0];
 
-    // State machine
     reg [2:0] state;
     reg [4:0] idx;
 
@@ -170,7 +165,6 @@ module tt_um_snk_smart_io_hub (
                 endcase
             end
 
-            // Auto-drive a few channels with internal logic
             duty_bus[28*8 +: 8] <= lut_value(lut_idx);
             duty_bus[29*8 +: 8] <= alu_add;
             duty_bus[30*8 +: 8] <= alu_mul;
@@ -186,6 +180,7 @@ module tt_um_snk_smart_io_hub (
         uio_in,
         ui_in[7:2],
         pwm_out[31:16],
+        alu_mul_full[15:8],
         1'b1
     };
 
