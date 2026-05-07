@@ -12,9 +12,9 @@ project:
   top_module: "tt_um_snk_smart_io_hub"
 
   source_files:
-    - "src/uart_rx.v"
-    - "src/pwm_bank.v"
-    - "src/tt_um_snk_smart_io_hub.v"
+    - "uart_rx.v"
+    - "pwm_bank.v"
+    - "tt_um_snk_smart_io_hub.v"
 
 pinout:
   ui[0]: "UART RX"
