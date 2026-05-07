@@ -6,7 +6,7 @@ project:
   description: "UART-controlled 16-channel PWM hub with timers and sequencer"
   language: "Verilog"
   clock_hz: 50000000
-  tiles: "3"
+  tiles: "1x3"
 
   top_module: "tt_um_snk_smart_io_hub"
 
