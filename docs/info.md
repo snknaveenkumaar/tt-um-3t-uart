@@ -1,51 +1,50 @@
 ## How it works
 
-This design implements a UART-controlled smart I/O hub.
+This design is a UART-controlled smart I/O hub built around a 64-channel PWM engine.
 
-A UART receiver listens on `ui_in[0]` and receives command bytes using a standard 8N1 protocol. A small command decoder updates internal registers and drives several hardware blocks.
+UART commands arrive on `ui_in[0]` using a standard 8N1 receiver. The command decoder can write PWM duty cycles, set the prescaler, and load internal modulation registers.
 
-The design includes:
+The 64 PWM channels are divided into banks of 8:
+- `ui_in[6:4]` selects which bank appears on `uo_out`
+- the next bank appears on `uio_out`
+- `ui_in[7]` switches `uio_out` to a status page instead of PWM output
 
-- A 32-channel PWM generator
-- A lookup table (LUT) waveform generator
-- A simple arithmetic logic unit (ALU)
-- A command interface over UART
+The upper 8 channels are reserved for live internal modulation:
+- a free-running phase counter
+- a small LFSR-style pattern source
+- an add/multiply datapath
+- a status pattern byte
 
-The PWM block compares a shared counter against 32 duty-cycle registers to generate independent PWM outputs.
-
-A LUT generates periodic waveforms, which are automatically applied to some PWM channels. This enables dynamic signal generation without continuous UART input.
-
-The ALU performs addition and multiplication operations. Its outputs are mapped to PWM channels, allowing dynamic waveform modulation.
-
-This combination of parallel logic blocks increases utilization and demonstrates a practical configurable hardware controller.
+This gives the design a practical purpose on a PCB while also keeping enough parallel logic to make good use of a 1x2 Tiny Tapeout floorplan.
 
 ---
 
 ## How to test
 
-1. Connect UART RX to `ui_in[0]`
-2. Set `ui_in[1] = 1` to enable command input
-3. Apply reset using `rst_n`
-4. Send command bytes over UART
+1. Connect a UART source to `ui_in[0]`
+2. Set `ui_in[1] = 1` to enable command handling
+3. Set `ui_in[6:4]` to choose the output bank
+4. Keep `ui_in[7] = 0` to show PWM data on `uio_out`
+5. Apply reset using `rst_n`
 
-Example:
+Example commands:
+- `0x80` + duty byte → set PWM channel 0
+- `0x81` + duty byte → set PWM channel 1
+- `0x88` + duty byte → set PWM channel 8
+- `0x89` + duty byte → set PWM channel 9
+- `0xC0` + byte → set prescaler
+- `0xC1` + byte → set ALU input A
+- `0xC2` + byte → set ALU input B
+- `0xC3` + byte → set phase seed
+- `0xC4` + byte → set LFSR seed
 
-- `0x80` + value → set PWM channel
-- `0x90` + value → set prescaler
-- `0xA0` + value → set ALU input A
-- `0xB0` + value → set ALU input B
-
-The PWM outputs can be observed on `uo_out` and `uio_out`.
-
-Expected behavior:
-
-Outputs produce PWM signals that vary based on UART commands, LUT patterns, and ALU results.
+**Expected output:** the selected PWM bank appears on `uo_out`, the next bank appears on `uio_out`, and the status page appears on `uio_out` when `ui_in[7] = 1`.
 
 ---
 
 ## External hardware
 
-- USB-to-UART adapter or microcontroller
-- Optional oscilloscope or logic analyzer
+- USB-to-UART adapter or microcontroller for command input
+- Oscilloscope or logic analyzer for observing PWM outputs
 
-No additional hardware is required.
+No additional external hardware is required for basic operation.
