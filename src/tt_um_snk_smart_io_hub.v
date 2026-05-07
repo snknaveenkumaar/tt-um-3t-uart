@@ -170,7 +170,7 @@ module tt_um_snk_smart_io_hub (
                 endcase
             end
 
-            // Auto-drive a few high channels with internal logic
+            // Auto-drive a few channels with internal logic
             duty_bus[28*8 +: 8] <= lut_value(lut_idx);
             duty_bus[29*8 +: 8] <= alu_add;
             duty_bus[30*8 +: 8] <= alu_mul;
@@ -181,7 +181,6 @@ module tt_um_snk_smart_io_hub (
     assign uio_out = pwm_out[15:8];
     assign uio_oe  = 8'hFF;
 
-    // Keep unused inputs and upper PWM bits accounted for
     wire _unused = &{
         ena,
         uio_in,
