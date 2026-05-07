@@ -4,7 +4,7 @@ module pwm_bank (
     input  wire clk,
     input  wire rst_n,
     input  wire [7:0] prescale_div,
-    input  wire [255:0] duty_bus,   // 32 channels
+    input  wire [255:0] duty_bus,
     output wire [31:0] pwm_out
 );
 
