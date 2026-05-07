@@ -1,45 +1,46 @@
 ## How it works
 
-This design is a UART-controlled smart I/O hub.
+This design implements a UART-controlled smart I/O hub.
 
-A UART receiver listens on `ui_in[0]` and accepts simple command bytes at 115200 baud using a standard 8N1 format. The design uses a small command decoder to update internal registers and drive several hardware blocks in parallel.
+A UART receiver listens on `ui_in[0]` and receives command bytes using a standard 8N1 protocol. A small command decoder updates internal registers based on the received data.
 
-The project includes:
-- a 16-channel PWM bank for steady or dimmable outputs
-- an 8-channel timer bank for delays, pulse generation, and periodic events
-- a small command interface that can update duty cycles, prescaler values, and timer registers
+The design contains three main blocks:
 
-The PWM block compares each channel’s duty register against a shared counter. When the counter is below the duty value, the output is high. Otherwise it is low. This creates independent PWM outputs that can be used for LEDs, control signals, or simple timing outputs.
+- A 16-channel PWM generator driven by an 8-bit counter
+- An 8-channel timer bank for delays and periodic events
+- A simple control interface for configuration
 
-The timer block counts down configurable values and can generate timeout pulses. These can be used to trigger periodic changes or hardware events. The design also supports a simple sequencer mode so output patterns can be loaded and stepped through automatically.
+Each PWM output compares a shared counter with its duty value. If the counter is less than the duty value, the output is high. Otherwise, it is low.
 
-The goal of the design is to provide a practical on-chip control hub that can be configured over UART while still being large enough to make good use of multiple Tiny Tapeout tiles.
+The timer block counts down from programmed values and generates timeout pulses. These pulses can be used internally for sequencing or timing operations.
+
+The system is designed to be scalable and uses multiple hardware blocks in parallel to utilize multiple Tiny Tapeout tiles.
 
 ---
 
 ## How to test
 
-1. Connect a UART source to `ui_in[0]`
-2. Set `ui_in[1] = 1` to enable command handling
+1. Connect a UART signal to `ui_in[0]`
+2. Set `ui_in[1] = 1` to enable command input
 3. Apply reset using `rst_n`
-4. Send a command byte followed by data bytes
+4. Send command bytes over UART
 
-Example commands:
-- `0x80` + duty byte → set PWM channel 0
-- `0x81` + duty byte → set PWM channel 1
-- `0x90` + prescaler byte → set the PWM prescaler
-- `0xC0` + timer bytes → configure timer 0
-- `0xD0` + control byte → control the sequencer
+Example:
 
-The PWM outputs appear on `uo_out[7:0]` and `uio_out[7:0]`.
+- `0x80` followed by a value sets PWM channel 0 duty
+- `0x90` followed by a value sets the PWM prescaler
 
-**Expected output:** PWM waveforms whose duty cycles and timing behavior change according to the received UART commands.
+The outputs can be observed on `uo_out` and `uio_out`.
+
+Expected behavior:
+
+The PWM outputs change according to the received UART commands and produce periodic waveforms.
 
 ---
 
 ## External hardware
 
-- USB-to-UART adapter or microcontroller for sending commands
-- Oscilloscope or logic analyzer for checking PWM outputs and timer pulses
+- USB-to-UART adapter or microcontroller
+- Optional oscilloscope or logic analyzer
 
-No additional external hardware is required for basic operation.
+No additional hardware is required.
