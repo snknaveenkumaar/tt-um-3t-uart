@@ -26,7 +26,7 @@ module tt_um_snk_smart_io_hub (
         .valid(rx_valid)
     );
 
-    // 🔥 32 PWM channels
+    // ✅ FIXED WIDTHS
     reg [255:0] duty_bus;
     reg [7:0]   prescale;
 
@@ -40,7 +40,7 @@ module tt_um_snk_smart_io_hub (
         .pwm_out(pwm_out)
     );
 
-    // 🔥 LUT waveform generator
+    // LUT
     reg [7:0] lut [0:31];
     reg [4:0] lut_idx;
 
@@ -56,7 +56,7 @@ module tt_um_snk_smart_io_hub (
         end
     end
 
-    // 🔥 Simple ALU
+    // ALU
     reg [7:0] alu_a, alu_b;
     wire [7:0] alu_add = alu_a + alu_b;
     wire [7:0] alu_mul = alu_a * alu_b;
@@ -94,13 +94,9 @@ module tt_um_snk_smart_io_hub (
                                 idx <= rx_data[4:0];
                                 state <= PWM_SET;
                             end
-
                             4'h9: state <= PRESCALE;
-
                             4'hA: state <= ALU_A;
-
                             4'hB: state <= ALU_B;
-
                         endcase
                     end
 
@@ -127,7 +123,7 @@ module tt_um_snk_smart_io_hub (
                 endcase
             end
 
-            // 🔥 Use LUT + ALU to drive some channels
+            // dynamic sources
             duty_bus[0 +: 8]  <= lut[lut_idx];
             duty_bus[8 +: 8]  <= alu_add;
             duty_bus[16 +: 8] <= alu_mul;
@@ -139,7 +135,14 @@ module tt_um_snk_smart_io_hub (
     assign uio_out = pwm_out[15:8];
     assign uio_oe  = 8'hFF;
 
-    wire _unused = &{ena, uio_in, ui_in[7:2], pwm_out[31:16], 1'b0};
+    // ✅ FIX ALL UNUSED
+    wire _unused = &{
+        ena,
+        uio_in,
+        ui_in[7:2],
+        pwm_out[31:16],
+        1'b0
+    };
 
 endmodule
 
