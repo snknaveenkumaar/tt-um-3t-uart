@@ -86,7 +86,9 @@ module tt_um_snk_smart_io_hub (
 
     wire [7:0] status_page;
 
+    // Fixed: Added an extra bit to make it 8 bits (was 7 bits before)
     assign status_page = {
+        1'b0,           // Added padding bit to make 8 bits total
         seq_enable,
         debug_page,
         bank_sel,
@@ -164,7 +166,7 @@ module tt_um_snk_smart_io_hub (
                         end
 
                         ST_SET_PWM: begin
-
+                            // Fixed: Only assign if idx is valid (0-31)
                             if (idx <= 5'd31)
                                 duty_bus[idx*8 +: 8] <= rx_data;
 
@@ -242,12 +244,16 @@ module tt_um_snk_smart_io_hub (
 
     assign uio_oe = 8'hFF;
 
+    // Fixed: Properly silence unused signal warnings
+    wire _unused_ena = ena;
+    wire _unused_uio_in = &uio_in;
+    wire _unused_ui_in7 = ui_in[7];
+    
     wire _unused;
-
     assign _unused = &{
-        ena,
-        uio_in,
-        ui_in[7],
+        _unused_ena,
+        _unused_uio_in,
+        _unused_ui_in7,
         1'b0
     };
 
