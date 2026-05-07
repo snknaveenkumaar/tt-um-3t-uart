@@ -36,26 +36,19 @@ async def uart_send_byte(dut, byte_val):
 
     # start bit
     dut.ui_in.value = int(dut.ui_in.value) & ~0x01
-    dut.ui_in.value &= 0xFF
-
     await ClockCycles(dut.clk, CLK_DIV)
 
     # data bits
     for i in range(8):
-
         if (byte_val >> i) & 1:
             dut.ui_in.value = int(dut.ui_in.value) | 0x01
         else:
             dut.ui_in.value = int(dut.ui_in.value) & ~0x01
-
-        dut.ui_in.value &= 0xFF
-
+        
         await ClockCycles(dut.clk, CLK_DIV)
 
     # stop bit
     dut.ui_in.value = int(dut.ui_in.value) | 0x01
-    dut.ui_in.value &= 0xFF
-
     await ClockCycles(dut.clk, CLK_DIV)
 
 
