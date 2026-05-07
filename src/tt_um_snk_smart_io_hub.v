@@ -26,7 +26,7 @@ module tt_um_snk_smart_io_hub (
         .valid(rx_valid)
     );
 
-    // ✅ FIXED WIDTHS
+    // ✅ 32-channel PWM
     reg [255:0] duty_bus;
     reg [7:0]   prescale;
 
@@ -40,7 +40,7 @@ module tt_um_snk_smart_io_hub (
         .pwm_out(pwm_out)
     );
 
-    // LUT
+    // LUT generator
     reg [7:0] lut [0:31];
     reg [4:0] lut_idx;
 
@@ -123,7 +123,7 @@ module tt_um_snk_smart_io_hub (
                 endcase
             end
 
-            // dynamic sources
+            // dynamic signals
             duty_bus[0 +: 8]  <= lut[lut_idx];
             duty_bus[8 +: 8]  <= alu_add;
             duty_bus[16 +: 8] <= alu_mul;
@@ -135,7 +135,7 @@ module tt_um_snk_smart_io_hub (
     assign uio_out = pwm_out[15:8];
     assign uio_oe  = 8'hFF;
 
-    // ✅ FIX ALL UNUSED
+    // ✅ clean unused handling
     wire _unused = &{
         ena,
         uio_in,
