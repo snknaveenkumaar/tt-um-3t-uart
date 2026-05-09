@@ -1,7 +1,7 @@
 yaml_version: 6
 
 project:
-  title: "UART Smart I/O Hub"
+  title: "IEEE SNK UART Smart I/O Hub"
   author: "NAVEEN KUMAAR S"
   description: "IEEE SNK_UART-controlled 64-channel PWM hub with banked outputs, internal modulation engine, ALU datapath, and sequencer."
 
